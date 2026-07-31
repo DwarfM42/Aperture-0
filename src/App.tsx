@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { createDemoRun, verifyFixtureIntegrity } from './simulation/demoRun'
 import type { DemoSnapshot, FixtureIntegrityResult, GraphEdge } from './simulation/types'
+import { createPhase1Run, type Phase1Snapshot } from './model/phase1Run'
 
 const phaseCopy = {
   ISOLATED: {
@@ -27,6 +28,7 @@ const phaseCopy = {
 } as const
 
 const run = createDemoRun('APR-DEMO-000001')
+const computedRun = createPhase1Run()
 
 function edgeClass(edge: GraphEdge, snapshot: DemoSnapshot): string {
   const classes = ['graph-edge', edge.kind.toLowerCase()]
@@ -81,7 +83,88 @@ function DomainGraph({ snapshot }: { snapshot: DemoSnapshot }) {
   )
 }
 
+function Phase1View() {
+  const [phaseIndex, setPhaseIndex] = useState(0)
+  const snapshot: Phase1Snapshot = computedRun.snapshots[phaseIndex]
+  const transfer = snapshot.transfer
+  const routedBits = snapshot.metrics.routedBits
+  const channelUses = snapshot.metrics.channelUses
+  const recovered = transfer?.recovered === null || transfer?.recovered === undefined
+    ? null
+    : new TextDecoder().decode(new Uint8Array(transfer.recovered))
+
+  return (
+    <section className="workspace phase1-workspace" aria-label="Phase 1 computed model">
+      <aside className="phase-rail" aria-label="Phase 1 computed snapshots">
+        <span className="rail-title">COMPUTED SEQUENCE</span>
+        {computedRun.snapshots.map((item, index) => (
+          <button
+            className={index === phaseIndex ? 'phase-button active' : 'phase-button'}
+            key={item.phase}
+            onClick={() => setPhaseIndex(index)}
+            aria-label={`Open Phase 1 ${item.phase} snapshot`}
+            aria-pressed={index === phaseIndex}
+          >
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <i />
+            <b>{item.phase}</b>
+          </button>
+        ))}
+      </aside>
+
+      <section className="observation-panel">
+        <div className="panel-heading">
+          <div>
+            <span className="step-kicker">{snapshot.phase} · CLOSED APERTURE COMPUTATION</span>
+            <h1>PHASE 1 COMPUTED TOY MODEL</h1>
+            <p>Deterministic values computed from preregistered known-domain inputs. Not Phase 0 fixture telemetry.</p>
+          </div>
+          <div className="clock-readout">
+            <div><span>tA</span><strong>{snapshot.worldA.localTime.toFixed(2)}</strong></div>
+            <div><span>tB</span><strong>{snapshot.worldB.localTime.toFixed(2)}</strong></div>
+          </div>
+        </div>
+        <div className="graph-frame phase1-evidence">
+          <h2>{snapshot.phase}</h2>
+          <p>Shortest path: {snapshot.geodesicWitness.nodeIds.join(' → ')}</p>
+          <p>Manifest {computedRun.manifestDigest.slice(0, 16)}…</p>
+          <p>{computedRun.manifest.records.length} provenance records verified</p>
+        </div>
+      </section>
+
+      <aside className="telemetry-panel">
+        <div className="telemetry-heading"><span>PHASE 1 COMPUTED TELEMETRY</span><i /></div>
+        <div className="metric-grid">
+          <MetricCard label="GEODESIC LENGTH" value={snapshot.metrics.geodesicLength.toFixed(2)} unit="units" />
+          <MetricCard label="GEODESIC REDUCTION" value={`${(snapshot.metrics.geodesicReductionRatio * 100).toFixed(2)}%`} unit="computed" />
+          <MetricCard label="MUTUAL INFORMATION" value={snapshot.metrics.mutualInformation.toFixed(6)} unit="bits" />
+          <MetricCard label="INTERNAL VOLUME" value={snapshot.metrics.internalVolume.toFixed(6)} unit="effective rank" />
+          <MetricCard label="THROAT CAPACITY" value={`${snapshot.metrics.capacityBitsPerUse.toFixed(2)} bits/use`} />
+        </div>
+        <section className="transfer-card">
+          <div className="section-label"><span>CERTIFICATE-BOUND TRANSFER</span><b>{transfer?.status ?? 'NOT ATTEMPTED'}</b></div>
+          <div className="bitstream">
+            {routedBits > 0 ? `${routedBits} / ${channelUses} BITS ROUTED b→c` : 'NO CERTIFICATE ROUTE USED'}
+          </div>
+          <strong className={transfer?.verified ? 'verified' : 'blocked'}>
+            {transfer?.verified ? `${recovered} RECOVERED` : 'NO B-SIDE RECOVERY'}
+          </strong>
+        </section>
+        <section className="ledger-card">
+          <div className="section-label"><span>CALCULATION MANIFEST</span><b>SHA-256</b></div>
+          <dl>
+            <div><dt>SCHEMA</dt><dd>{computedRun.manifest.schemaVersion}</dd></div>
+            <div><dt>MODEL</dt><dd>{computedRun.manifest.modelVersion}</dd></div>
+            <div><dt>CLASS</dt><dd>{computedRun.manifest.classification}</dd></div>
+          </dl>
+        </section>
+      </aside>
+    </section>
+  )
+}
+
 function App() {
+  const [modelView, setModelView] = useState<'PHASE0' | 'PHASE1'>('PHASE0')
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [integrityStatus, setIntegrityStatus] = useState<FixtureIntegrityResult['status'] | 'CHECKING'>('CHECKING')
@@ -123,8 +206,11 @@ function App() {
   return (
     <main className="app-shell">
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        Snapshot {snapshot.phase}. {snapshot.transfer.verified ? 'Fixture transform matched.' : 'No input injected.'} Fixture integrity {integrityStatus}.
+        {modelView === 'PHASE1'
+          ? 'Phase 1 computed toy model. Calculation manifest verified.'
+          : `Snapshot ${snapshot.phase}. ${snapshot.transfer.input.length > 0 ? 'Calibration input injected.' : 'No input injected.'} Fixture integrity ${integrityStatus}.`}
       </span>
+
       <header className="topbar">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
@@ -134,8 +220,14 @@ function App() {
           </div>
         </div>
         <div className="run-meta">
-          <span>RUN {run.experimentId}</span>
-          <span className="status-dot">FIXTURE LOADED</span>
+          <button
+            onClick={() => setModelView((current) => current === 'PHASE0' ? 'PHASE1' : 'PHASE0')}
+            aria-label={modelView === 'PHASE0' ? 'Show Phase 1 computed model' : 'Show Phase 0 reference fixture'}
+          >
+            {modelView === 'PHASE0' ? 'PHASE 1 COMPUTED' : 'PHASE 0 FIXTURE'}
+          </button>
+          <span>{modelView === 'PHASE0' ? `RUN ${run.experimentId}` : computedRun.manifest.modelVersion}</span>
+          <span className="status-dot">{modelView === 'PHASE0' ? 'FIXTURE LOADED' : 'MANIFEST VERIFIED'}</span>
         </div>
       </header>
 
@@ -145,6 +237,7 @@ function App() {
         <span>NO Ω BOUNDARY</span>
       </div>
 
+      {modelView === 'PHASE1' ? <Phase1View /> : (
       <section className="workspace">
         <aside className="phase-rail" aria-label="Reference fixture snapshots">
           <span className="rail-title">SEQUENCE</span>
@@ -241,11 +334,12 @@ function App() {
           </section>
         </aside>
       </section>
+      )}
 
       <footer>
         <span>APERTURE-0 · SPEC v0.4</span>
         <span>KNOWN-DOMAIN CALIBRATION ONLY</span>
-        <span>LOCAL DETERMINISTIC FIXTURE</span>
+        <span>{modelView === 'PHASE0' ? 'LOCAL DETERMINISTIC FIXTURE' : 'LOCAL DETERMINISTIC COMPUTATION'}</span>
       </footer>
     </main>
   )

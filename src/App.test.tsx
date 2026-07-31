@@ -79,6 +79,23 @@ describe('Aperture-0 observatory', () => {
     expect(screen.getAllByText('not specified in v0.4')).toHaveLength(2)
   })
 
+  it('switches to the Phase 1 computed toy model with provenance-bound telemetry', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Show Phase 1 computed model' }))
+    expect(screen.getByRole('heading', { name: 'PHASE 1 COMPUTED TOY MODEL' })).toBeInTheDocument()
+    expect(screen.getByText('100.00')).toBeInTheDocument()
+    expect(screen.getByText('48 provenance records verified')).toBeInTheDocument()
+    expect(screen.getByText('LOCAL DETERMINISTIC COMPUTATION')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Open Phase 1 OPEN snapshot' }))
+    expect(screen.getByText('22.73')).toBeInTheDocument()
+    expect(screen.getByText('1.00 bits/use')).toBeInTheDocument()
+    expect(screen.getByText('16 / 16 BITS ROUTED b→c')).toBeInTheDocument()
+    expect(screen.getByText('A0 RECOVERED')).toBeInTheDocument()
+  })
+
   it('announces snapshot state changes to assistive technology', () => {
     render(<App />)
 

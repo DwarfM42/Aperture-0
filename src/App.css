@@ -116,7 +116,8 @@ h1 { font-family: var(--mono); font-size: clamp(31px, 4vw, 54px); font-weight: 4
 .ledger-card dl { margin: 0; display: grid; gap: 9px; }
 .ledger-card dl div { display: flex; justify-content: space-between; gap: 8px; font-family: var(--mono); font-size: 10px; }
 .ledger-card dt { color: var(--muted); }
-.ledger-card dd { color: #afc3bf; margin: 0; text-align: right; }
+.ledger-card dd { color: #afc3bf; margin: 0; text-align: right; overflow-wrap: anywhere; }
+.phase1-workspace .ledger-card dd { max-width: 13.5rem; font-size: 0.66rem; }
 footer { height: 32px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; color: var(--muted); font-size: 10px; }
 
 @media (max-width: 980px) {
