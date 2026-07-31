@@ -1,7 +1,7 @@
 import { sha256 } from '@noble/hashes/sha2.js'
 import { bytesToHex } from '@noble/hashes/utils.js'
 import { describe, expect, it } from 'vitest'
-import { createDemoRun, replayDemoRun } from './demoRun'
+import { createDemoRun, verifyFixtureIntegrity } from './demoRun'
 import type { DemoRun, DemoSnapshot } from './demoRun'
 
 const encoder = new TextEncoder()
@@ -63,6 +63,17 @@ describe('Aperture-0 deterministic Phase 0 run', () => {
     expect(run.snapshots[3].metrics.internalVolume).toBeNull()
   })
 
+  it('derives geodesic reduction only from the reference-fixture baseline', () => {
+    const run = createDemoRun('APR-DEMO-000001')
+
+    expect(run.snapshots.map(({ metrics }) => metrics.geodesicReductionRatio)).toEqual([
+      0,
+      0.668503,
+      0.96612,
+      0.656521,
+    ])
+  })
+
   it('scrambles and restores the payload only while the known-domain aperture is open', () => {
     const run = createDemoRun('APR-DEMO-000001')
     const open = run.snapshots[2]
@@ -82,21 +93,21 @@ describe('Aperture-0 deterministic Phase 0 run', () => {
   it('rejects a record rebound to a different experiment identifier', async () => {
     const rebound = createDemoRun('APR-DEMO-FORGED')
 
-    const replay = await replayDemoRun(rebound)
+    const integrity = await verifyFixtureIntegrity(rebound)
 
-    expect(replay.status).toBe('DIVERGED')
-    expect(replay.firstMismatchStep).toBe(0)
+    expect(integrity.status).toBe('DIVERGED')
+    expect(integrity.firstMismatchStep).toBe(0)
   })
 
   it('rejects truncated and empty records', async () => {
     const truncated = createDemoRun('APR-DEMO-000001')
     truncated.snapshots = truncated.snapshots.slice(0, 3)
     truncated.snapshotHashes = truncated.snapshotHashes.slice(0, 3)
-    expect((await replayDemoRun(truncated)).status).toBe('DIVERGED')
+    expect((await verifyFixtureIntegrity(truncated)).status).toBe('DIVERGED')
 
     const empty = createDemoRun('APR-DEMO-000001')
     empty.snapshots = []
-    expect((await replayDemoRun(empty)).status).toBe('DIVERGED')
+    expect((await verifyFixtureIntegrity(empty)).status).toBe('DIVERGED')
   })
 
   it('rejects a coordinated snapshot and manifest rewrite after resealing', async () => {
@@ -105,9 +116,9 @@ describe('Aperture-0 deterministic Phase 0 run', () => {
     resealRun(forged)
 
     expect(forged.snapshotHashes.at(-1)).not.toBe(
-      '30866afa6b16c3e721a905f69f8c59e4f022c3b525a5aba2372f5c7d0dd77e2d',
+      '40348678487fd0df72a2a04888e4e325fb8bf993f1df882a4f6cb2df7b4bde93',
     )
-    expect((await replayDemoRun(forged)).status).toBe('DIVERGED')
+    expect((await verifyFixtureIntegrity(forged)).status).toBe('DIVERGED')
   })
 
   it('rejects reordered phases even when steps, links, and hashes are resealed', async () => {
@@ -123,7 +134,7 @@ describe('Aperture-0 deterministic Phase 0 run', () => {
       'CORRELATING',
       'CLOSED',
     ])
-    expect((await replayDemoRun(forged)).status).toBe('DIVERGED')
+    expect((await verifyFixtureIntegrity(forged)).status).toBe('DIVERGED')
   })
 
   it('rejects a forged terminal snapshot when the manifest spoofs the trusted anchor', async () => {
@@ -134,29 +145,29 @@ describe('Aperture-0 deterministic Phase 0 run', () => {
     expect(forged.snapshots[3].hash).not.toBe(trustedTerminalHash)
     forged.snapshotHashes[3] = trustedTerminalHash
 
-    const replay = await replayDemoRun(forged)
+    const integrity = await verifyFixtureIntegrity(forged)
 
-    expect(replay.status).toBe('DIVERGED')
-    expect(replay.firstMismatchStep).toBe(3)
+    expect(integrity.status).toBe('DIVERGED')
+    expect(integrity.firstMismatchStep).toBe(3)
   })
 
   it('rejects disagreement with the recorded hash manifest', async () => {
     const run = createDemoRun('APR-DEMO-000001')
     run.snapshotHashes[2] = '0'.repeat(64)
 
-    const replay = await replayDemoRun(run)
+    const integrity = await verifyFixtureIntegrity(run)
 
-    expect(replay.status).toBe('DIVERGED')
-    expect(replay.firstMismatchStep).toBe(2)
+    expect(integrity.status).toBe('DIVERGED')
+    expect(integrity.firstMismatchStep).toBe(2)
   })
 
-  it('replays to the same hash chain without mutating the original record', async () => {
+  it('verifies the stored fixture hash chain without mutating the original record', async () => {
     const run = createDemoRun('APR-DEMO-000001')
-    expect(run.snapshotHashes.at(-1)).toBe('30866afa6b16c3e721a905f69f8c59e4f022c3b525a5aba2372f5c7d0dd77e2d')
-    const replay = await replayDemoRun(run)
+    expect(run.snapshotHashes.at(-1)).toBe('40348678487fd0df72a2a04888e4e325fb8bf993f1df882a4f6cb2df7b4bde93')
+    const integrity = await verifyFixtureIntegrity(run)
 
-    expect(replay.status).toBe('VERIFIED')
-    expect(replay.snapshotHashes).toEqual(run.snapshotHashes)
+    expect(integrity.status).toBe('VERIFIED')
+    expect(integrity.snapshotHashes).toEqual(run.snapshotHashes)
     expect(run.snapshots).toHaveLength(4)
   })
 })

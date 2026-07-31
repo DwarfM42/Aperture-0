@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { createDemoRun, replayDemoRun } from './simulation/demoRun'
-import type { DemoSnapshot, GraphEdge, ReplayResult } from './simulation/types'
+import { createDemoRun, verifyFixtureIntegrity } from './simulation/demoRun'
+import type { DemoSnapshot, FixtureIntegrityResult, GraphEdge } from './simulation/types'
 
 const phaseCopy = {
   ISOLATED: {
@@ -84,14 +84,14 @@ function DomainGraph({ snapshot }: { snapshot: DemoSnapshot }) {
 function App() {
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const [replayStatus, setReplayStatus] = useState<ReplayResult['status'] | 'CHECKING'>('CHECKING')
+  const [integrityStatus, setIntegrityStatus] = useState<FixtureIntegrityResult['status'] | 'CHECKING'>('CHECKING')
   const snapshot = run.snapshots[step]
   const copy = phaseCopy[snapshot.phase]
 
   useEffect(() => {
     let cancelled = false
-    void replayDemoRun(run).then((result) => {
-      if (!cancelled) setReplayStatus(result.status)
+    void verifyFixtureIntegrity(run).then((result) => {
+      if (!cancelled) setIntegrityStatus(result.status)
     })
     return () => { cancelled = true }
   }, [])
@@ -123,7 +123,7 @@ function App() {
   return (
     <main className="app-shell">
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        Snapshot {snapshot.phase}. {snapshot.transfer.verified ? 'Payload verified.' : 'No input injected.'} Replay {replayStatus}.
+        Snapshot {snapshot.phase}. {snapshot.transfer.verified ? 'Fixture transform matched.' : 'No input injected.'} Fixture integrity {integrityStatus}.
       </span>
       <header className="topbar">
         <div className="brand-lockup">
@@ -135,7 +135,7 @@ function App() {
         </div>
         <div className="run-meta">
           <span>RUN {run.experimentId}</span>
-          <span className="status-dot">RECORDED</span>
+          <span className="status-dot">FIXTURE LOADED</span>
         </div>
       </header>
 
@@ -146,7 +146,7 @@ function App() {
       </div>
 
       <section className="workspace">
-        <aside className="phase-rail" aria-label="Recorded snapshots">
+        <aside className="phase-rail" aria-label="Reference fixture snapshots">
           <span className="rail-title">SEQUENCE</span>
           {run.snapshots.map((item, index) => (
             <button
@@ -211,6 +211,7 @@ function App() {
           </div>
           <div className="metric-grid">
             <MetricCard label="GEODESIC LENGTH" value={snapshot.metrics.geodesicLength.toFixed(2)} unit="units" />
+            <MetricCard label="GEODESIC REDUCTION" value={`${(snapshot.metrics.geodesicReductionRatio * 100).toFixed(2)}%`} unit="derived from reference fixture" />
             <MetricCard label="MUTUAL INFORMATION" value={formatMetric(snapshot.metrics.mutualInformation)} unit={snapshot.metrics.mutualInformation === null ? 'not specified in v0.4' : 'normalized'} />
             <MetricCard label="INTERNAL VOLUME" value={formatMetric(snapshot.metrics.internalVolume)} unit={snapshot.metrics.internalVolume === null ? 'not specified in v0.4' : 'effective rank'} />
             <MetricCard label="THROAT CAPACITY" value={`${snapshot.metrics.throatCapacityBits.toFixed(2)} bits`} />
@@ -225,17 +226,17 @@ function App() {
                 : 'NO INPUT INJECTED'}
             </div>
             <strong className={snapshot.transfer.verified ? 'verified' : 'blocked'}>
-              {snapshot.transfer.verified ? 'PAYLOAD VERIFIED' : 'NO TRAVERSABLE CHANNEL'}
+              {snapshot.transfer.verified ? 'FIXTURE TRANSFORM MATCH' : 'NO TRAVERSABLE CHANNEL'}
             </strong>
           </section>
 
           <section className="ledger-card">
-            <div className="section-label"><span>FLIGHT RECORDER</span><b>SHA-256</b></div>
+            <div className="section-label"><span>FIXTURE INTEGRITY</span><b>SHA-256</b></div>
             <dl>
               <div><dt>CLASS</dt><dd>{snapshot.classification}</dd></div>
               <div><dt>HASH</dt><dd>{snapshot.hash.slice(0, 16)}…</dd></div>
-              <div><dt>CHAIN</dt><dd>{snapshot.previousHash ? 'LINKED' : 'GENESIS'}</dd></div>
-              <div><dt>REPLAY</dt><dd>{replayStatus}</dd></div>
+              <div><dt>HASH CHAIN</dt><dd>{snapshot.previousHash ? 'LINKED' : 'GENESIS'}</dd></div>
+              <div><dt>CHECK</dt><dd>{integrityStatus}</dd></div>
             </dl>
           </section>
         </aside>

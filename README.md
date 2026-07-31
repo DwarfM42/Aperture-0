@@ -7,15 +7,27 @@
 
 > **既知のトイモデルであり、発見を示すものではありません。** 現在のバージョンは、境界 Ω、外部補完、異常・発見の主張、未知境界の代表値を実装していません。
 
+> **Phase 0はMVPではありません。** 現在の公開版は、v0.4の計算機能や記録基盤を検証する前段のreference fixtureです。
+
 ## 現在の実装範囲
 
 - World A / World Bによる決定論的なキャリブレーションシーケンス
-- 4つの記録状態: `ISOLATED → CORRELATING → OPEN → CLOSED`
+- 4つのfixture状態: `ISOLATED → CORRELATING → OPEN → CLOSED`
 - スナップショットに基づくグラフとテレメトリの可視化
 - v0.4で定義されたメトリクスを参照fixtureとして使用し、仕様に値がない項目は明確に未指定として表示
 - 既知領域のapertureが`OPEN`の間だけ、ペイロードの入力・スクランブル・復元を許可
-- 実験ID、状態順序、記録長、hash manifest、固定terminal hashに対して検証されるSHA-256スナップショットチェーン
+- 実験ID、状態順序、fixture長、hash manifest、固定terminal hashに対して検証されるSHA-256スナップショットチェーン
 - Firebaseプロジェクト`aperture-0`向けのHosting SPA設定
+
+### 未実装
+
+- 相互情報量と測地線長の実計算
+- テンソルネットワークの contraction、Internal Volume、Throat Capacityの実計算
+- Null Aperture
+- 永続ログ、短時間リングバッファ、Event Flight Recorder
+- 人工異常のpre-roll / post-roll凍結とAnomaly Scene Archive
+- モデル状態を再計算するDeterministic Replay
+- Boundary Ω、Feasible Set、Future Completionおよび未知境界実験
 
 アーキテクチャの境界と受け入れ条件は、[`docs/phase-0-architecture.md`](docs/phase-0-architecture.md) に記載しています。
 
@@ -31,7 +43,7 @@
    - `Ⅱ`: 自動再生を一時停止する
    - `→`: 次のスナップショットへ進む
 4. 中央のグラフでWorld A、World B、内部領域の接続状態を確認します。
-5. 右側のパネルで参照メトリクス、転送結果、flight recorderを確認します。
+5. 右側のパネルで参照メトリクス、転送結果、fixture integrityを確認します。
 
 ### 4つの状態
 
@@ -44,10 +56,11 @@
 
 ### 確認ポイント
 
-- `TRANSFER PROBE`は`OPEN`のときだけ`PASS`および`PAYLOAD VERIFIED`になります。
+- `TRANSFER PROBE`は`OPEN`のときだけ`PASS`および`FIXTURE TRANSFORM MATCH`になります。
 - `ISOLATED`、`CORRELATING`、`CLOSED`では入力を注入せず、`NO TRAVERSABLE CHANNEL`と表示します。
-- `FLIGHT RECORDER`の`REPLAY`が`VERIFIED`なら、記録されたスナップショット列の再検証に成功しています。
-- `CHAIN`は最初のスナップショットで`GENESIS`、以降は前のhashへ接続された`LINKED`になります。
+- `FIXTURE INTEGRITY`の`CHECK`が`VERIFIED`なら、保存済みreference fixtureのhash chainが固定trust anchorと一致しています。モデル状態の再計算ではありません。
+- `HASH CHAIN`は最初のスナップショットで`GENESIS`、以降は前のhashへ接続された`LINKED`になります。
+- `GEODESIC REDUCTION`はv0.4の参照fixture値から導出した比率であり、情報幾何モデルの実計算結果ではありません。
 - 表示される数値はv0.4の参照fixtureであり、ライブ計算や未知現象の観測結果ではありません。
 
 ## 開発
@@ -64,6 +77,7 @@ npm run dev
 ```bash
 npm test
 npm run lint
+npm run typecheck
 npm run build
 ```
 

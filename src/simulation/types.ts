@@ -56,7 +56,7 @@ export interface DemoRun {
   snapshotHashes: string[]
 }
 
-export interface ReplayResult {
+export interface FixtureIntegrityResult {
   status: 'VERIFIED' | 'DIVERGED'
   snapshotHashes: string[]
   firstMismatchStep: number | null

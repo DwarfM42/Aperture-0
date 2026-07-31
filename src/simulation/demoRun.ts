@@ -7,7 +7,7 @@ import type {
   DemoSnapshot,
   GraphEdge,
   GraphNode,
-  ReplayResult,
+  FixtureIntegrityResult,
   TransferState,
 } from './types'
 
@@ -20,7 +20,7 @@ const trustedMode = 'GEOMETRY_CALIBRATION'
 const trustedNotice = 'KNOWN TOY MODEL — NOT A DISCOVERY'
 const trustedPhaseOrder: DemoPhase[] = ['ISOLATED', 'CORRELATING', 'OPEN', 'CLOSED']
 // External trust anchor for this exact preregistered fixture. Do not derive it from `run`.
-const trustedTerminalHash = '30866afa6b16c3e721a905f69f8c59e4f022c3b525a5aba2372f5c7d0dd77e2d'
+const trustedTerminalHash = '40348678487fd0df72a2a04888e4e325fb8bf993f1df882a4f6cb2df7b4bde93'
 
 const nodes: GraphNode[] = [
   { id: 'A0', domain: 'A', x: 10, y: 45 },
@@ -99,6 +99,7 @@ function metricsFor(definition: PhaseDefinition): DemoMetrics {
     geodesicLength: definition.geodesicLength,
     geodesicReductionRatio: round(
       (baselineLength - definition.geodesicLength) / baselineLength,
+      6,
     ),
     mutualInformation: definition.mutualInformation,
     internalVolume: definition.internalVolume,
@@ -201,9 +202,9 @@ export function createDemoRun(experimentId: string): DemoRun {
   }
 }
 
-export async function replayDemoRun(run: DemoRun): Promise<ReplayResult> {
+export async function verifyFixtureIntegrity(run: DemoRun): Promise<FixtureIntegrityResult> {
   let previousHash: string | null = null
-  const replayedHashes: string[] = []
+  const verifiedHashes: string[] = []
 
   const headerMismatch = run.experimentId !== trustedExperimentId
     || run.mode !== trustedMode
@@ -214,7 +215,7 @@ export async function replayDemoRun(run: DemoRun): Promise<ReplayResult> {
   if (headerMismatch || lengthMismatch) {
     return {
       status: 'DIVERGED',
-      snapshotHashes: replayedHashes,
+      snapshotHashes: verifiedHashes,
       firstMismatchStep: headerMismatch
         ? 0
         : Math.min(run.snapshots.length, run.snapshotHashes.length),
@@ -224,34 +225,34 @@ export async function replayDemoRun(run: DemoRun): Promise<ReplayResult> {
   if (run.snapshotHashes.at(-1) !== trustedTerminalHash) {
     return {
       status: 'DIVERGED',
-      snapshotHashes: replayedHashes,
+      snapshotHashes: verifiedHashes,
       firstMismatchStep: trustedPhaseOrder.length - 1,
     }
   }
 
   for (const [index, snapshot] of run.snapshots.entries()) {
     const { hash, ...unsigned } = snapshot
-    const replayHash = hashSnapshot(run.experimentId, { ...unsigned, previousHash })
-    replayedHashes.push(replayHash)
+    const verifiedHash = hashSnapshot(run.experimentId, { ...unsigned, previousHash })
+    verifiedHashes.push(verifiedHash)
     if (
       snapshot.step !== index
       || snapshot.phase !== trustedPhaseOrder[index]
-      || hash !== replayHash
+      || hash !== verifiedHash
       || hash !== run.snapshotHashes[index]
       || snapshot.previousHash !== previousHash
     ) {
       return {
         status: 'DIVERGED',
-        snapshotHashes: replayedHashes,
+        snapshotHashes: verifiedHashes,
         firstMismatchStep: index,
       }
     }
-    previousHash = replayHash
+    previousHash = verifiedHash
   }
 
   return {
     status: 'VERIFIED',
-    snapshotHashes: replayedHashes,
+    snapshotHashes: verifiedHashes,
     firstMismatchStep: null,
   }
 }

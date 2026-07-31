@@ -17,10 +17,27 @@ describe('Aperture-0 observatory', () => {
     expect(screen.getByRole('button', { name: 'Open ISOLATED snapshot' })).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('shows the result of an actual deterministic replay check', async () => {
+  it('describes the stored-fixture integrity check without claiming replay or a flight recorder', async () => {
     render(<App />)
 
+    expect(screen.getByText('FIXTURE INTEGRITY')).toBeInTheDocument()
+    expect(screen.getByText('HASH CHAIN')).toBeInTheDocument()
     expect(await screen.findByText('VERIFIED')).toBeInTheDocument()
+    expect(screen.queryByText('FLIGHT RECORDER')).not.toBeInTheDocument()
+    expect(screen.queryByText('REPLAY')).not.toBeInTheDocument()
+    expect(screen.getByText('FIXTURE LOADED')).toBeInTheDocument()
+  })
+
+  it('shows geodesic reduction as derived from reference fixture values', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(screen.getByText('GEODESIC REDUCTION')).toBeInTheDocument()
+    expect(screen.getByText('0.00%')).toBeInTheDocument()
+    expect(screen.getByText('derived from reference fixture')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Open OPEN snapshot' }))
+    expect(screen.getByText('96.61%')).toBeInTheDocument()
   })
 
   it('steps to OPEN and exposes verified transfer evidence', async () => {
@@ -33,7 +50,7 @@ describe('Aperture-0 observatory', () => {
     expect(screen.getByRole('heading', { name: 'OPEN' })).toBeInTheDocument()
     expect(screen.getByText('8.00 bits')).toBeInTheDocument()
     expect(screen.getByText('APERTURE-0')).toBeInTheDocument()
-    expect(screen.getByText('PAYLOAD VERIFIED')).toBeInTheDocument()
+    expect(screen.getByText('FIXTURE TRANSFORM MATCH')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Next snapshot' }))
     expect(screen.getByRole('heading', { name: 'CLOSED' })).toBeInTheDocument()
@@ -68,7 +85,7 @@ describe('Aperture-0 observatory', () => {
     expect(screen.getByRole('status')).toHaveTextContent('ISOLATED')
   })
 
-  it('resets the observed run to its first recorded snapshot', async () => {
+  it('resets the observed fixture to its first snapshot', async () => {
     const user = userEvent.setup()
     render(<App />)
 
