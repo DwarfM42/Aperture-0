@@ -1,5 +1,11 @@
 # Aperture-0 Independent Review
 
+> **HISTORICAL RECORD — SUPERSEDED.** This review was performed against commit
+> `e81936d5ada331379c0af360cf49d1cc49f5102e`, before the Phase 0 accuracy fixes.
+> It does not describe the current implementation. Terms such as “Flight Recorder” and
+> “Replay” below refer only to that earlier reviewed state and are retained as audit evidence.
+> See `README.md` and `docs/phase-0-architecture.md` for the current product scope and terminology.
+
 ## Verdict
 
 **INCOMPLETE (as an implementation of v0.4) / PASS (as what it actually claims to be: a Phase 0 reference fixture)**

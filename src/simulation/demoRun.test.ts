@@ -99,6 +99,26 @@ describe('Aperture-0 deterministic Phase 0 run', () => {
     expect(integrity.firstMismatchStep).toBe(0)
   })
 
+  it('rejects a fixture with a forged mode', async () => {
+    const forged = createDemoRun('APR-DEMO-000001')
+    Object.assign(forged, { mode: 'WRONG_MODE' })
+
+    const integrity = await verifyFixtureIntegrity(forged)
+
+    expect(integrity.status).toBe('DIVERGED')
+    expect(integrity.firstMismatchStep).toBe(0)
+  })
+
+  it('rejects a fixture with a forged notice', async () => {
+    const forged = createDemoRun('APR-DEMO-000001')
+    Object.assign(forged, { notice: 'WRONG_NOTICE' })
+
+    const integrity = await verifyFixtureIntegrity(forged)
+
+    expect(integrity.status).toBe('DIVERGED')
+    expect(integrity.firstMismatchStep).toBe(0)
+  })
+
   it('rejects truncated and empty records', async () => {
     const truncated = createDemoRun('APR-DEMO-000001')
     truncated.snapshots = truncated.snapshots.slice(0, 3)
