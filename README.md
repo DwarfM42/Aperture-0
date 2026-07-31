@@ -1,5 +1,6 @@
 # Aperture-0
 
+これはジョークアプリです。
 **Aperture-0** は、既知領域における情報幾何キャリブレーションを可視化するWeb観測アプリです。[`docs/aperture-0-spec-v0.4.md`](docs/aperture-0-spec-v0.4.md) に定義された最初の実行可能範囲を実装しています。
 
 🌐 **公開サイト:** [https://aperture-0.web.app/](https://aperture-0.web.app/)
