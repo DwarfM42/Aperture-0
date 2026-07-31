@@ -72,14 +72,3 @@ production buildのローカルプレビュー:
 ```bash
 npm run preview
 ```
-
-## Firebase Hosting
-
-このリポジトリはFirebaseプロジェクト`aperture-0`向けに設定されており、`dist/`をsingle-page applicationとして配信します。
-
-```bash
-npm run build
-firebase deploy --only hosting
-```
-
-ローカルbuildだけではサイトは公開されません。本番反映には、明示的なFirebase Hosting deployが必要です。
